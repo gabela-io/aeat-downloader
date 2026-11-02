@@ -18,7 +18,12 @@ import {
   type Declaration,
   type Selection,
 } from "./client";
-import { initializeTheme, readTheme, saveTheme, type ThemeChoice } from "./theme";
+import {
+  initializeTheme,
+  readTheme,
+  saveTheme,
+  type ThemeChoice,
+} from "./theme";
 
 // Never reach the Font Awesome CDN (the extension CSP blocks it anyway): the
 // default icon library resolves to an empty inline SVG.

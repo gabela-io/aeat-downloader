@@ -62,9 +62,21 @@ describe("AEAT browser transport", () => {
       expect(() => expandBatch({ ...input, ...invalid })).toThrow();
   });
   it("checks the DNI and NIE control letter", () => {
-    for (const valid of ["11111111H", "00000000T", "X0000000T", "Y0000000Z", "Z0000000M"])
+    for (const valid of [
+      "11111111H",
+      "00000000T",
+      "X0000000T",
+      "Y0000000Z",
+      "Z0000000M",
+    ])
       expect(validNif(valid)).toBe(true);
-    for (const invalid of ["11111111A", "X00000000T", "1111111H", "W0000000T", ""])
+    for (const invalid of [
+      "11111111A",
+      "X00000000T",
+      "1111111H",
+      "W0000000T",
+      "",
+    ])
       expect(validNif(invalid)).toBe(false);
   });
   it("validates identity and dates before contacting AEAT", async () => {
@@ -130,7 +142,9 @@ describe("AEAT browser transport", () => {
     ).rejects.toThrow("403");
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch.mock.calls[0][0]).toBe(QUERY_URL);
-    expect(Object.fromEntries(fetch.mock.calls[0][1].body as URLSearchParams)).toMatchObject({
+    expect(
+      Object.fromEntries(fetch.mock.calls[0][1].body as URLSearchParams),
+    ).toMatchObject({
       EJF: "2025",
       FED: "20250101",
       FEH: "20260131",
