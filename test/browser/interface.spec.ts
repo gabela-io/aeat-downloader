@@ -111,6 +111,16 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
       `chrome-extension://${new URL(worker.url()).host}/index.html`,
     );
     await expect(page.locator("#count")).toHaveText("145 declaraciones");
+    // The toolbar button relies on this lookup to focus the open tab.
+    expect(
+      await worker.evaluate(async () => {
+        const contexts = await chrome.runtime.getContexts({
+          contextTypes: [chrome.runtime.ContextType.TAB],
+          documentUrls: [chrome.runtime.getURL("index.html")],
+        });
+        return contexts.length;
+      }),
+    ).toBe(1);
     await expect(page.locator("#results li")).toHaveCount(25);
     await expect(page.locator("#batch-details")).not.toHaveAttribute(
       "open",

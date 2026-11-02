@@ -3,7 +3,7 @@ import { cp, mkdtemp, readFile, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { createHash } from "node:crypto";
-import { QUERY_URL, PDF_URL } from "../../src/client";
+import { AEAT_ORIGINS, QUERY_URL, PDF_URL } from "../../src/client";
 const fixture = (index = 1) =>
   `<respuestaCorrecta><ejercicio>2025</ejercicio><modelo>130</modelo><periodo>1T</periodo><nif>11111111H</nif><csv>TEST${String(index).padStart(12, "0")}</csv><expediente>TEST${index}</expediente><justificante>130${String(index).padStart(10, "0")}</justificante><fechaYHoraPresentacion>2025-04-20T10:30:00</fechaYHoraPresentacion></respuestaCorrecta>`;
 const xml = (body = fixture()) =>
@@ -15,6 +15,10 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
   const manifest = JSON.parse(
     await readFile(join(extension, "manifest.json"), "utf8"),
   );
+  // Read-only scope: no permission or host beyond downloads, storage and AEAT.
+  expect(manifest.permissions).toEqual(["downloads", "storage"]);
+  expect(manifest.optional_host_permissions).toEqual(AEAT_ORIGINS);
+  expect(manifest.host_permissions).toBeUndefined();
   manifest.host_permissions = manifest.optional_host_permissions;
   await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
   const context = await chromium.launchPersistentContext(
