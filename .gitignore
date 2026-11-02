@@ -1,0 +1,14 @@
+# nix
+result
+result-*
+
+# direnv
+.direnv/
+.envrc.local
+
+# bun
+node_modules/
+
+# extension build and Playwright output
+build/
+test-results/
