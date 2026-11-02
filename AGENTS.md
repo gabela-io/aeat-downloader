@@ -6,17 +6,18 @@ Solo lectura. Extraída de `autonomo/apps/invoices-extension` 0.8.0.
 
 ## Estructura
 
-| Ruta                                     | Qué                                                                             |
-| ---------------------------------------- | ------------------------------------------------------------------------------- |
-| `src/client.ts`                          | endpoints fijos, validación de selección/NIF, parser XML estricto, PDF, lotes   |
-| `src/app.tsx`                            | página: estado, cola persistente, bloqueo entre pestañas, descargas, vista      |
-| `src/background.ts`                      | el icono abre o enfoca la página                                                |
-| `src/theme.ts`, `src/style.css`          | tema claro/oscuro sobre Web Awesome                                             |
-| `build.ts`                               | `Bun.build` + `manifest.json` (permisos tomados de `AEAT_ORIGINS`)              |
-| `test/client.test.ts`                    | `bun test`, con `fetch` simulado                                                |
-| `test/browser/*.spec.ts`                 | Playwright con la extensión real, DNS bloqueado y rutas interceptadas           |
-| `nix/`                                   | blueprint (`prefix = "nix/"`): devshell, formatter, paquete, check de navegador |
-| `specs/`, `.specify/`, `.claude/skills/` | Spec Kit: especificaciones y su andamiaje (no se formatea)                      |
+| Ruta                                  | Qué                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `src/client.ts`                       | endpoints fijos, validación de selección/NIF, parser XML estricto, PDF, lotes   |
+| `src/app.tsx`                         | página: estado, cola persistente, bloqueo entre pestañas, descargas, vista      |
+| `src/background.ts`                   | el icono abre o enfoca la página                                                |
+| `src/theme.ts`, `src/style.css`       | tema claro/oscuro sobre Web Awesome                                             |
+| `build.ts`                            | `Bun.build` + `manifest.json` (permisos tomados de `AEAT_ORIGINS`)              |
+| `test/client.test.ts`                 | `bun test`, con `fetch` simulado                                                |
+| `test/browser/*.spec.ts`              | Playwright con la extensión real, DNS bloqueado y rutas interceptadas           |
+| `nix/`                                | blueprint (`prefix = "nix/"`): devshell, formatter, paquete, check de navegador |
+| `specs/`, `.specify/`                 | Spec Kit: especificaciones y su andamiaje (no se formatea)                      |
+| `.claude/skills/`, `skills-lock.json` | skills de Spec Kit y de terceros (`npx skills`), sin formatear                  |
 
 ## Comandos
 

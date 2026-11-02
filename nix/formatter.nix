@@ -4,6 +4,8 @@ let
     projectRootFile = "flake.nix";
     settings.excludes = [
       "bun.lock"
+      # vendored agent skills (npx skills); refreshed upstream, not ours to format
+      "skills-lock.json"
       # Spec Kit scaffolding (`specify init`); refreshed upstream, not ours to format
       ".specify/**"
       ".claude/**"
