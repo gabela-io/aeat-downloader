@@ -7,7 +7,7 @@
     "build": "bun build.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test test/*.test.ts",
-    "test:browser": "playwright test"
+    "test:browser": "bun --bun playwright test"
   },
   "dependencies": {
     "@awesome.me/webawesome": "3.14.0",
