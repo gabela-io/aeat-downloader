@@ -102,10 +102,6 @@ just check          # nix flake check: build, pruebas, navegador y formato
 
 Las pruebas usan datos inventados y bloquean la resolución DNS, así que ninguna llega a la AEAT. Las normas del proyecto están en [`AGENTS.md`](AGENTS.md) y el diseño en [`specs/001-standalone-extension`](specs/001-standalone-extension/spec.md).
 
-## Estado
-
-Versión 0.1.0. El código viene del «Histórico AEAT» de la extensión de facturas de autonomo, donde se diseñó y probó con respuestas simuladas. Queda pendiente una prueba con un certificado real (que Chrome lo presente en las peticiones de la extensión) y comparar un justificante descargado con el de la Sede. Los cambios están en el [CHANGELOG](CHANGELOG.md).
-
 ## Licencia
 
 MIT. Consulta [`LICENSE`](LICENSE). `.specify/` y parte de `.claude/skills/` los genera [Spec Kit](https://github.com/github/spec-kit) (MIT); el resto de `.claude/skills/` viene de terceros (orígenes en `skills-lock.json`) y mantiene su licencia.
