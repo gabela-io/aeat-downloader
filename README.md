@@ -41,9 +41,11 @@ Un error de la AEAT, una respuesta vacía o una página de acceso no cuentan com
 
 ## Instalación
 
-Necesitas Chrome o Chromium 120 o posterior y [Nix](https://nixos.org/download/) con flakes. Desde una copia del repositorio:
+Necesitas Chrome o Chromium 120 o posterior y [Nix](https://nixos.org/download/) con flakes:
 
 ```bash
+git clone https://github.com/gabela-io/aeat-downloader
+cd aeat-downloader
 nix build
 cp -r --no-preserve=mode result ~/aeat-downloader-ext
 ```
