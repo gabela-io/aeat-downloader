@@ -9,11 +9,15 @@ import {
   AEAT_ORIGINS,
   QUERY_URL,
   PDF_URL,
+  AccessError,
   declarationKey,
   fetchPdf,
+  localDay,
+  NetworkError,
   queryDeclarations,
   expandBatch,
   QueryResponseError,
+  validNif,
   type BatchSelection,
   type Declaration,
   type Selection,
@@ -25,8 +29,8 @@ import {
   type ThemeChoice,
 } from "./theme";
 
-// Never reach the Font Awesome CDN (the extension CSP blocks it anyway): the
-// default icon library resolves to an empty inline SVG.
+// Never ask for the Font Awesome CDN: the default icon library resolves to an
+// empty inline SVG. The manifest CSP would block that host as well.
 registerIconLibrary("default", {
   resolver: () =>
     "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E",
@@ -66,10 +70,15 @@ let pageIndex = 0;
 const THEME_KEY = "aeat-theme";
 const MODELS = ["130", "303", "349", "347", "390", "100"];
 let theme: ThemeChoice = readTheme(THEME_KEY);
-let status = {
+// The concrete way out of an access failure, shown inside the status message.
+type StatusAction = "certificate" | "permission";
+let status: { text: string; error: boolean; action?: StatusAction } = {
   text: "Listo para consultar. Mantén esta pestaña abierta durante el lote.",
   error: false,
 };
+class PermissionError extends Error {}
+let permissionGranted: boolean | undefined;
+let nifInvalid = false;
 const form = {
   nif: "",
   name: "",
@@ -121,21 +130,40 @@ function resetFilters(): void {
 function emptyArchive(): Archive {
   return { version: 1, entries: {}, visible: [], saturated: false };
 }
-function message(text: string, error = false): void {
-  status = { text, error };
+function message(text: string, error = false, action?: StatusAction): void {
+  status = { text, error, action };
   update();
 }
+const timedOut = (error: unknown) =>
+  error instanceof DOMException && error.name === "TimeoutError";
 function errorText(error: unknown): string {
   if (error instanceof DOMException && error.name === "AbortError")
     return "Operación cancelada. Las descargas pendientes se conservan.";
-  if (
-    error instanceof TypeError ||
-    (error instanceof DOMException && error.name === "TimeoutError")
-  )
-    return "No se pudo conectar con AEAT. Comprueba el certificado en Chrome, la conexión y los permisos. No se ha reintentado automáticamente.";
+  if (timedOut(error)) return new NetworkError().message;
   return error instanceof Error
     ? error.message
     : "No se completó la operación. Puedes volver a intentarlo.";
+}
+function errorAction(error: unknown): StatusAction | undefined {
+  if (error instanceof AccessError || timedOut(error)) return "certificate";
+  if (error instanceof PermissionError) return "permission";
+}
+// Must run inside the click handler: Chrome only prompts during a user gesture.
+function requestAccess(): Promise<boolean> {
+  const request = chrome.permissions.request({ origins: AEAT_ORIGINS });
+  if (!permissionGranted) message("Esperando el permiso de Chrome…");
+  return request.then((granted) => (permissionGranted = granted));
+}
+function grantAccess(): void {
+  void requestAccess().then((granted) =>
+    granted
+      ? message("Acceso concedido. Vuelve a consultar o reanuda el lote.")
+      : message(
+          "No se concedió acceso a los dos dominios de AEAT.",
+          true,
+          "permission",
+        ),
+  );
 }
 async function save(): Promise<void> {
   await chrome.storage.local.set({ [storeKey]: archive });
@@ -229,7 +257,7 @@ async function run(
       },
     );
   } catch (error) {
-    message(errorText(error), true);
+    message(errorText(error), true, errorAction(error));
   } finally {
     operation = undefined;
     update();
@@ -256,12 +284,18 @@ async function downloadEntry(entry: Entry, signal: AbortSignal): Promise<void> {
     );
     entry.state = "saving";
     await save();
-    entry.downloadId = await chrome.downloads.download({
-      url,
-      filename: `AEAT/${entry.row.nif}/${entry.row.ejercicio}/${entry.row.modelo}-${entry.row.periodo}-${entry.row.justificante}.pdf`,
-      saveAs: false,
-      conflictAction: "uniquify",
-    });
+    entry.downloadId = await chrome.downloads
+      .download({
+        url,
+        filename: `AEAT/${entry.row.nif}/${entry.row.ejercicio}/${entry.row.modelo}-${entry.row.periodo}-${entry.row.justificante}.pdf`,
+        saveAs: false,
+        conflictAction: "uniquify",
+      })
+      .catch((error: unknown) => {
+        // Chrome refused the call, so no download exists: retryable, not uncertain.
+        entry.state = "error";
+        throw error;
+      });
     await save();
     update();
     // The foreground tab owns this short operation; the persisted ID survives it.
@@ -347,15 +381,23 @@ function submitQuery(event: Event): void {
   try {
     selection = readSelection();
   } catch (error) {
-    message(errorText(error), true);
+    nifInvalid = !validNif(form.nif.trim().toUpperCase());
+    if (!nifInvalid) return message(errorText(error), true);
+    consultationOpen = true;
+    message(
+      "Revisa el campo NIF / NIE: el número o la letra de control no son válidos.",
+      true,
+    );
+    document.getElementById("nif")?.focus();
     return;
   }
+  nifInvalid = false;
   // Request permissions directly in the user gesture, before any storage awaits.
-  const permission = chrome.permissions.request({ origins: AEAT_ORIGINS });
+  const permission = requestAccess();
   void run(async (signal) => {
     if (!(await permission))
-      throw new Error(
-        "No se concedió acceso a los dos dominios de AEAT. Puedes volver a consultar para concederlo.",
+      throw new PermissionError(
+        "No se concedió acceso a los dos dominios de AEAT. Concédelo para consultar.",
       );
     archive.batch = {
       selection,
@@ -376,10 +418,12 @@ function submitQuery(event: Event): void {
 }
 function resume(): void {
   if (operation || !ready) return;
-  const permission = chrome.permissions.request({ origins: AEAT_ORIGINS });
+  const permission = requestAccess();
   void run(async (signal) => {
     if (!(await permission))
-      throw new Error("Concede acceso a AEAT para continuar el lote.");
+      throw new PermissionError(
+        "Concede acceso a AEAT para continuar el lote.",
+      );
     if (archive.batch) await queryBatch(signal);
   });
 }
@@ -448,19 +492,32 @@ const exportInventory = () =>
       "Inventario exportado. Contiene NIF e identificadores fiscales; guárdalo con tus documentos.",
     );
   });
-function prepareAgain(key: string): void {
-  void run(async () => {
-    // This deliberate action is required after an unconfirmed download.
+// Deliberate per-row action (also the only way out of an unconfirmed download):
+// downloads that entry alone, outside the bulk selection. Chrome's "uniquify"
+// keeps an existing file and saves the copy under a new name.
+function downloadAgain(key: string): void {
+  void run(async (signal) => {
     const entry = archive.entries[key];
-    if (entry?.state !== "uncertain") return;
-    archive.entries[key] = { row: entry.row, state: "pending" };
-    selected.add(key);
-    await save();
+    if (!entry || ["fetching", "saving"].includes(entry.state)) return;
+    selected.delete(key);
+    message("Descargando otra copia…");
+    await downloadEntry(entry, signal);
     message(
-      "Preparada para descargar de nuevo. Puede crear otra copia; revisa antes las descargas de Chrome.",
+      "PDF guardado de nuevo. Si ya existía, Chrome guarda la copia con otro nombre, sin sobrescribirlo.",
     );
+  }).then(() => {
+    const selector = CSS.escape(key);
+    (
+      document.querySelector<HTMLElement>(`[data-again-key="${selector}"]`) ??
+      document.querySelector<HTMLElement>(
+        `[data-selection-key="${selector}"]:enabled`,
+      ) ??
+      document.getElementById("results-title")
+    )?.focus();
   });
 }
+const closeForgetDialog = () =>
+  (document.getElementById("forget-dialog") as HTMLDialogElement).close();
 function changeYearFrom(): void {
   const year = Number(form.yearFrom);
   if (
@@ -507,14 +564,18 @@ function QueryItem(props: { query: QueryTask }) {
 function ResultRow(props: { entryKey: string; busy: boolean }) {
   const key = props.entryKey;
   const entry = archive.entries[key];
+  const done = entry.state === "done";
+  const identity = `${entry.row.modelo} · ${entry.row.ejercicio} · ${entry.row.periodo === "0A" ? "Anual" : entry.row.periodo}`;
   return (
-    <li class="aeat-row">
+    <li class={done ? "aeat-row done" : "aeat-row"}>
       <label>
+        {/* A downloaded entry shows a checked, locked box rather than an empty one. */}
         <input
           type="checkbox"
           data-selection-key={key}
-          checked={selected.has(key)}
+          checked={done || selected.has(key)}
           disabled={props.busy || !["pending", "error"].includes(entry.state)}
+          title={done ? "Ya descargado" : undefined}
           onChange={(event) => {
             if (event.currentTarget.checked) selected.add(key);
             else selected.delete(key);
@@ -522,8 +583,9 @@ function ResultRow(props: { entryKey: string; busy: boolean }) {
           }}
         />
         <span>
-          <strong>{`${entry.row.modelo} · ${entry.row.ejercicio} · ${entry.row.periodo === "0A" ? "Anual" : entry.row.periodo}`}</strong>
+          <strong>{identity}</strong>
           <small>{`Justificante ${entry.row.justificante}`}</small>
+          {done && <span class="sr-only"> · Ya descargado</span>}
         </span>
       </label>
       <time dateTime={entry.row.fechaYHoraPresentacion}>
@@ -533,13 +595,27 @@ function ResultRow(props: { entryKey: string; busy: boolean }) {
       <span class={`aeat-state ${entry.state}`}>
         {stateLabels[entry.state]}
         {entry.error && <small>{entry.error}</small>}
+        {done && (
+          <button
+            type="button"
+            class="text-action wa-brand wa-plain"
+            data-again-key={key}
+            aria-label={`Descargar de nuevo ${identity}`}
+            disabled={props.busy}
+            onClick={() => downloadAgain(key)}
+          >
+            Descargar de nuevo
+          </button>
+        )}
       </span>
       {entry.state === "uncertain" && (
         <button
           type="button"
           class="wa-neutral wa-outlined"
+          data-again-key={key}
+          aria-label={`Preparar otra descarga ${identity}`}
           disabled={props.busy}
-          onClick={() => prepareAgain(key)}
+          onClick={() => downloadAgain(key)}
         >
           Preparar otra descarga
         </button>
@@ -595,6 +671,7 @@ function App() {
   const modelCount = form.models.length;
   const yearCount = Number(form.yearTo) - Number(form.yearFrom) + 1;
   const batch = archive.batch?.selection;
+  const entries = Object.values(archive.entries);
   return (
     <>
       <a class="skip-link" href="#results-title">
@@ -657,9 +734,12 @@ function App() {
                   maxLength={9}
                   autocomplete="off"
                   spellcheck={false}
+                  aria-invalid={nifInvalid || undefined}
+                  aria-describedby={nifInvalid ? "status" : undefined}
                   value={form.nif}
                   onInput={(event) => {
                     form.nif = value(event);
+                    nifInvalid = false;
                     update();
                   }}
                 />
@@ -780,6 +860,12 @@ function App() {
                 <button class="wa-brand wa-accent" type="submit">
                   Consultar AEAT
                 </button>
+                {permissionGranted === false && (
+                  <p id="permission-note" class="permission-note">
+                    Chrome te pedirá acceso a www1 y
+                    www2.agenciatributaria.gob.es.
+                  </p>
+                )}
               </fieldset>
             </form>
             <details class="certificate-help">
@@ -856,6 +942,28 @@ function App() {
             hidden={!status.text}
           >
             {status.text}
+            {status.action === "certificate" && (
+              <button
+                id="status-action"
+                type="button"
+                class="wa-neutral wa-outlined"
+                disabled={busy}
+                onClick={() => void chrome.tabs.create({ url: QUERY_URL })}
+              >
+                Abrir acceso con certificado
+              </button>
+            )}
+            {status.action === "permission" && (
+              <button
+                id="status-action"
+                type="button"
+                class="wa-neutral wa-outlined"
+                disabled={busy}
+                onClick={grantAccess}
+              >
+                Conceder acceso
+              </button>
+            )}
           </wa-callout>
           <wa-callout
             id="limit"
@@ -1176,16 +1284,68 @@ function App() {
               </code>
               .
             </p>
+          </details>
+          <section class="danger-zone" aria-labelledby="forget-title">
+            <h3 id="forget-title">Historial local</h3>
+            <p>
+              Borrarlo olvida qué se descargó y qué queda por revisar. Los PDF
+              descargados no se tocan.
+            </p>
             <button
               id="forget"
               type="button"
               class="wa-danger wa-outlined"
               disabled={busy}
-              onClick={forget}
+              onClick={() =>
+                (
+                  document.getElementById("forget-dialog") as HTMLDialogElement
+                ).showModal()
+              }
             >
               Borrar historial local AEAT
             </button>
-          </details>
+          </section>
+          <dialog id="forget-dialog" aria-labelledby="forget-dialog-title">
+            <h3 id="forget-dialog-title">¿Borrar el historial local?</h3>
+            <p id="forget-summary">
+              {`Se olvidarán ${entries.length} declaraciones: ${entries.filter((entry) => entry.state === "done").length} descargadas y ${entries.filter((entry) => entry.state === "uncertain").length} por revisar. Los PDF descargados siguen en Descargas.`}
+            </p>
+            <p>
+              Exporta antes el inventario si quieres conservar qué se descargó y
+              sus huellas.
+            </p>
+            <div class="dialog-actions">
+              <button
+                id="forget-export"
+                type="button"
+                class="wa-neutral wa-outlined"
+                disabled={busy}
+                onClick={exportInventory}
+              >
+                Exportar inventario
+              </button>
+              <button
+                id="forget-cancel"
+                type="button"
+                class="wa-neutral wa-outlined"
+                onClick={closeForgetDialog}
+              >
+                Cancelar
+              </button>
+              <button
+                id="forget-confirm"
+                type="button"
+                class="wa-danger"
+                disabled={busy}
+                onClick={() => {
+                  closeForgetDialog();
+                  forget();
+                }}
+              >
+                Borrar historial
+              </button>
+            </div>
+          </dialog>
         </section>
       </main>
     </>
@@ -1213,7 +1373,7 @@ async function initialize(): Promise<void> {
     yearFrom: currentYear,
     yearTo: currentYear,
     from: `${currentYear}-01-01`,
-    to: new Date().toISOString().slice(0, 10),
+    to: localDay(),
   };
   form.nif = selection.nif;
   form.name = selection.name;
@@ -1225,6 +1385,9 @@ async function initialize(): Promise<void> {
   for (const key of archive.visible)
     if (["pending", "error"].includes(archive.entries[key].state))
       selected.add(key);
+  permissionGranted = await chrome.permissions.contains({
+    origins: AEAT_ORIGINS,
+  });
   consultationOpen = !archive.batch || matchMedia("(min-width: 851px)").matches;
   ready = true;
   update();

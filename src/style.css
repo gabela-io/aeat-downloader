@@ -244,10 +244,6 @@ li {
 .ayuda p {
   margin-top: 12px;
 }
-.ayuda button {
-  font-size: 13px;
-  margin-top: 14px;
-}
 
 @media (min-width: 1440px) {
   .mesa {
@@ -633,7 +629,8 @@ li {
   min-height: 44px;
   cursor: pointer;
 }
-.aeat-row:has(input:checked) {
+/* Selection tint; a downloaded row's checked box is a mark, not a selection. */
+.aeat-row:not(.done):has(input:checked) {
   background: var(--hover);
 }
 .aeat-row:focus-within {
@@ -659,6 +656,57 @@ li {
 }
 .aeat-state.done {
   color: var(--verde);
+}
+.aeat-state .text-action {
+  display: block;
+  width: fit-content;
+  margin: 0;
+  padding: 4px 0;
+}
+#status-action {
+  display: block;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.permission-note {
+  margin-top: 8px;
+  color: var(--secundario);
+  font-size: 13px;
+}
+.danger-zone {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--linea);
+  font-size: 13px;
+}
+.danger-zone h3 {
+  font-size: 14px;
+}
+.danger-zone p {
+  margin: 6px 0 12px;
+  color: var(--secundario);
+}
+.danger-zone button {
+  font-size: 13px;
+}
+#forget-dialog {
+  gap: 12px;
+  color: var(--ink);
+  font-size: 14px;
+}
+#forget-dialog h3 {
+  font-size: 17px;
+}
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+.dialog-actions button {
+  font-size: 13px;
 }
 .aeat-state.error,
 .aeat-state.uncertain {
