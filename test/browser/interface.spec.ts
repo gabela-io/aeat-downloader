@@ -96,7 +96,9 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
     const page = await context.newPage();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    // Console errors include CSP violations (a CDN icon or font, inline script).
+    // Console errors include CSP violations: the manifest CSP limits the page to
+    // its own files and the two AEAT origins, so a CDN icon or font, or an
+    // inline script, lands here (download.spec checks the blocking itself).
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
     });
@@ -111,16 +113,36 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
       `chrome-extension://${new URL(worker.url()).host}/index.html`,
     );
     await expect(page.locator("#count")).toHaveText("145 declaraciones");
-    // The toolbar button relies on this lookup to focus the open tab.
-    expect(
-      await worker.evaluate(async () => {
-        const contexts = await chrome.runtime.getContexts({
-          contextTypes: [chrome.runtime.ContextType.TAB],
-          documentUrls: [chrome.runtime.getURL("index.html")],
-        });
-        return contexts.length;
-      }),
-    ).toBe(1);
+    // The toolbar button focuses the open page, also after the skip link adds
+    // a fragment to its URL, instead of opening a second tab.
+    await page.locator(".skip-link").focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/index\.html#results-title$/);
+    const tabs = () =>
+      worker.evaluate(async () => (await chrome.tabs.query({})).length);
+    const openTabs = await tabs();
+    await worker.evaluate(() =>
+      (globalThis as unknown as { openPage(): Promise<void> }).openPage(),
+    );
+    expect(await tabs()).toBe(openTabs);
+    // Before the first query, the page says Chrome will ask for both domains.
+    await expect(page.locator("#permission-note")).toHaveText(
+      "Chrome te pedirá acceso a www1 y www2.agenciatributaria.gob.es.",
+    );
+    // An invalid NIF marks and focuses its field, and the message names it.
+    await page.locator("#nif").fill("11111111A");
+    await page
+      .getByRole("button", { name: "Consultar AEAT", exact: true })
+      .click();
+    await expect(page.locator("#nif")).toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("#nif")).toHaveAttribute(
+      "aria-describedby",
+      "status",
+    );
+    await expect(page.locator("#nif")).toBeFocused();
+    await expect(page.locator("#status")).toContainText("campo NIF / NIE");
+    await page.locator("#nif").fill("11111111H");
+    await expect(page.locator("#nif")).not.toHaveAttribute("aria-invalid");
     await expect(page.locator("#results li")).toHaveCount(25);
     await expect(page.locator("#batch-details")).not.toHaveAttribute(
       "open",
@@ -203,8 +225,57 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
           });
       }
     }
+    // Downloaded rows: a checked, locked box and their own "Descargar de nuevo".
+    await page.locator("#document-state").selectOption("done");
+    await expect(
+      page.getByRole("checkbox", { name: /Ya descargado/ }),
+    ).toHaveCount(25);
+    await expect(
+      page.getByRole("button", { name: /^Descargar de nuevo/ }),
+    ).toHaveCount(25);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      for (const theme of ["light", "dark"]) {
+        await page.locator("#theme").selectOption(theme);
+        await page.locator("#results").scrollIntoViewIfNeeded();
+        await page.screenshot({
+          path: join(evidence, `done-rows-${width}-${theme}.png`),
+        });
+      }
+    }
     await page.reload();
     await expect(page.locator("#theme")).toHaveValue("dark");
+    // While Chrome's permission prompt is open the page says so; a refusal
+    // offers to ask again. The stub stands in for the native prompt.
+    const asking = await context.newPage();
+    await asking.addInitScript(() =>
+      Object.assign(chrome.permissions, {
+        request: () =>
+          new Promise<boolean>((answer) => Object.assign(window, { answer })),
+      }),
+    );
+    await asking.goto(page.url());
+    await expect(asking.locator("#count")).toHaveText("145 declaraciones");
+    await asking
+      .getByRole("button", { name: "Consultar AEAT", exact: true })
+      .click();
+    await expect(asking.locator("#status")).toHaveText(
+      "Esperando el permiso de Chrome…",
+    );
+    await asking.evaluate(() =>
+      (window as unknown as { answer(granted: boolean): void }).answer(false),
+    );
+    await expect(asking.locator("#status")).toContainText(
+      "No se concedió acceso",
+    );
+    await expect(asking.locator("#status-action")).toHaveText(
+      "Conceder acceso",
+    );
+    await asking.locator("#status-action").click();
+    await expect(asking.locator("#status")).toHaveText(
+      /^Esperando el permiso de Chrome…/,
+    );
+    await asking.close();
     expect(requests).toEqual([]);
     expect(errors).toEqual([]);
   } finally {
