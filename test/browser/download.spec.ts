@@ -177,6 +177,9 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
     await expect(page.locator("#selection-fields")).toBeEnabled();
     // Access already granted: no notice about Chrome's permission prompt.
     await expect(page.locator("#permission-note")).toHaveCount(0);
+    // Nothing to report yet: no idle message.
+    await expect(page.locator("#status")).toBeHidden();
+    await shoot(page, "first-run", "body");
     const violations = await page.evaluate(async () => {
       const seen: string[] = [];
       document.addEventListener("securitypolicyviolation", (event) =>
@@ -202,10 +205,23 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
     await page.locator("#date-options > summary").click();
     await page.locator("#from").fill("2025-01-01");
     await page.locator("#to").fill("2026-01-31");
+    await expect(page.locator("#batch-preview")).toHaveText(
+      "1 modelo × 1 ejercicio · 1 consulta",
+    );
     await page
       .getByRole("button", { name: "Consultar AEAT", exact: true })
       .click();
     await expect(page.locator("#results li")).toHaveCount(1);
+    // Counts of one take the singular.
+    await expect(page.locator("#count")).toHaveText("1 declaración");
+    await expect(page.locator("#download-summary")).toHaveText(
+      "0 descargados · 1 pendiente",
+    );
+    await expect(page.locator("#selection-note")).toHaveText("1 seleccionado");
+    await expect(page.locator("#page-range")).toHaveText("1–1 de 1 documento");
+    await expect(page.locator("#status")).toContainText(
+      "Lote consultado: 1 declaración.",
+    );
     // Each rejection names its own cause; only access failures offer the
     // certificate page. A row that is otherwise valid never gets through.
     const notAdmitted = "Respuesta de consulta no admitida.";
@@ -215,7 +231,7 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
       [xml(fixture().replace("11111111H", "22222222J")), "no corresponde"],
       [xml(fixture().replace("2025-04-20", "2024-04-20")), "intervalo"],
       ["<!DOCTYPE x>" + xml(), "Respuesta XML no admitida."],
-      [xml(""), "1 consultas con error"],
+      [xml(""), "1 consulta con error"],
       [xml(fixture() + fixture()), "duplicadas"],
       // Same justificante (and so the same file name) with another CSV.
       [
@@ -272,6 +288,10 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
       await expect.poll(() => singleQueries).toBe(before + 1);
       await expect(page.locator("#cancel")).toBeHidden();
       await expect(page.locator("#status")).toHaveClass(/error/);
+      await expect(page.locator("#status")).toHaveAttribute(
+        "variant",
+        "danger",
+      );
       await expect(page.locator("#status")).toContainText(reason);
       if (action)
         await expect(page.locator("#status-action")).toHaveText(action);
@@ -366,6 +386,32 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
       .getByRole("button", { name: "Consultar AEAT", exact: true })
       .click();
     await expect(page.locator("#limit")).toBeVisible();
+    await expect(page.locator("#limit")).toContainText("Acotar esta consulta");
+    // A truncated query is counted apart from errors and offers to narrow it:
+    // the form gets its model and year and opens the dates, without querying.
+    await expect(page.locator("#show-issues")).toHaveText("1 incompleta");
+    await page.locator('input[name="models"][value="303"]').check();
+    await page.locator("#year-from").fill("2024");
+    await page.locator("#show-issues").click();
+    const queriesBefore = singleQueries;
+    await page
+      .getByRole("button", {
+        name: "Acotar esta consulta: modelo 130, ejercicio 2025",
+      })
+      .click();
+    await expect(page.locator("#from")).toBeFocused();
+    await expect(page.locator("#date-options")).toHaveAttribute("open", "");
+    await expect(
+      page.locator('input[name="models"][value="303"]'),
+    ).not.toBeChecked();
+    await expect(
+      page.locator('input[name="models"][value="130"]'),
+    ).toBeChecked();
+    await expect(page.locator("#year-from")).toHaveValue("2025");
+    await expect(page.locator("#year-to")).toHaveValue("2025");
+    await expect(page.locator("#from")).toHaveValue("2025-01-01");
+    await expect(page.locator("#to")).toHaveValue("2026-01-31");
+    expect(singleQueries).toBe(queriesBefore);
     await expect(page.locator("#results li")).toHaveCount(25);
     await expect(page.locator("#page-range")).toHaveText(
       "1–25 de 100 documentos",
@@ -392,6 +438,18 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
       "1 de 4 consultas completadas",
     );
     await shoot(page, "certificate-error", "#status");
+    // The action reads as available: the callout's own ink, not a quiet grey.
+    const [actionInk, calloutInk] = await page
+      .locator("#status")
+      .evaluate((status) => [
+        getComputedStyle(status.querySelector("#status-action")!).color,
+        getComputedStyle(status.shadowRoot!.querySelector("slot:not([name])")!)
+          .color,
+      ]);
+    expect(actionInk).toBe(calloutInk);
+    await expect(page.locator("#scope")).toContainText(
+      "Presentaciones del 01/01/2024 al 31/01/2026",
+    );
     expect(batchCalls).toEqual(["130/2024", "303/2024"]);
     await page.reload();
     await expect(
@@ -401,9 +459,7 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
     await expect(page.locator("#query-progress")).toHaveText(
       "3 de 4 consultas completadas",
     );
-    await expect(page.locator("#status")).toContainText(
-      "1 consultas con error",
-    );
+    await expect(page.locator("#status")).toContainText("1 consulta con error");
     expect(batchCalls).toEqual([
       "130/2024",
       "303/2024",
@@ -543,7 +599,8 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
       page.evaluate(
         async (key) =>
           (await chrome.storage.local.get(key))[key] as
-            { entries: Record<string, { state: string }> } | undefined,
+            | { entries: Record<string, { state: string }>; visible: string[] }
+            | undefined,
         storeKey,
       );
     const exported = page.waitForEvent("download");
@@ -552,6 +609,8 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
       await readFile((await (await exported).path())!, "utf8"),
     );
     const kept = Object.values((await stored())!.entries);
+    const inBatch = (await stored())!.visible.length;
+    expect(kept.length).toBeGreaterThan(inBatch);
     expect(inventory).toMatchObject({
       version: 1,
       environment: "production",
@@ -564,7 +623,7 @@ test("read-only downloader: strict XML, PDF, persistence, locks and interruption
     const count = (state: string) =>
       kept.filter((entry) => entry.state === state).length;
     await expect(page.locator("#forget-summary")).toHaveText(
-      `Se olvidarán ${kept.length} declaraciones: ${count("done")} descargadas y ${count("uncertain")} por revisar. Los PDF descargados siguen en Descargas.`,
+      `Historial local: ${kept.length} declaraciones, ${inBatch} en este lote; ${count("done")} descargadas y ${count("uncertain")} por revisar. Se borra todo el historial, no solo el lote. Los PDF descargados siguen en Descargas.`,
     );
     await shoot(page, "clear-confirmation", "#forget-dialog");
     const exportedFirst = page.waitForEvent("download");

@@ -162,6 +162,15 @@ li {
   padding-left: 14px;
   margin-left: 2px;
 }
+/* The environment, once and quietly, next to the title. */
+.entorno {
+  font-size: 0.8125rem;
+  color: var(--secundario);
+  border: 1px solid var(--linea);
+  border-radius: var(--wa-border-radius-pill);
+  padding: 2px 10px;
+  white-space: nowrap;
+}
 .header-tools,
 .theme-control {
   display: flex;
@@ -299,6 +308,20 @@ li {
   .marca {
     display: none;
   }
+  /* Title and theme share the first row; the environment mark takes its own. */
+  .identidad {
+    display: contents;
+  }
+  .entorno {
+    order: 1;
+  }
+  .cabecera::after {
+    content: "";
+    flex-basis: 100%;
+  }
+  .header-tools {
+    margin-left: auto;
+  }
   .theme-control {
     gap: 6px;
   }
@@ -367,11 +390,6 @@ li {
   font-size: 0.8125rem;
   color: var(--secundario);
 }
-#consultation > .aeat-environment {
-  display: block;
-  margin: 16px 0 20px;
-}
-.aeat-environment,
 .aeat-warning {
   font-size: 0.8125rem;
 }
@@ -402,15 +420,14 @@ li {
 }
 .aeat-workspace .model-options {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px 8px;
+  gap: 0;
   margin: 20px 0 8px;
 }
 .aeat-workspace .model-options label {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 36px;
   margin: 0;
   cursor: pointer;
 }
@@ -461,15 +478,10 @@ li {
   font-size: 0.8125rem;
   width: 100%;
 }
-.aeat-intro {
-  color: var(--secundario);
-  font-size: 0.875rem;
-  margin-top: 8px;
-}
 #scope {
   font-size: 0.8125rem;
   color: var(--secundario);
-  margin: 12px 0 20px;
+  margin: 8px 0 20px;
   max-width: none;
 }
 .aeat-workspace .acciones {
@@ -542,9 +554,17 @@ li {
 .query-heading strong {
   font-weight: 600;
 }
+/* Severity: error (failed query or download) and attention (truncated query,
+ * unconfirmed download). */
 .query-heading .error,
-.query-heading .limited {
+#show-issues .error,
+.aeat-state.error {
   color: var(--error);
+}
+.query-heading .limited,
+#show-issues .limited,
+.aeat-state.uncertain {
+  color: var(--warning-ink);
 }
 .query-heading .done {
   color: var(--verde);
@@ -682,7 +702,10 @@ li {
   margin: 0;
   padding: 4px 0;
 }
+/* The callout's own ink: the neutral button's quiet grey read as disabled on
+ * the callout fill. */
 #status-action {
+  color: inherit;
   display: block;
   margin-top: 10px;
   font-size: 0.8125rem;
@@ -726,10 +749,6 @@ li {
 }
 .dialog-actions button {
   font-size: 0.8125rem;
-}
-.aeat-state.error,
-.aeat-state.uncertain {
-  color: var(--error);
 }
 .pagination {
   display: flex;
@@ -867,5 +886,10 @@ li {
   }
   .query-filter select {
     width: 100%;
+  }
+}
+@media (max-width: 700px) {
+  .aeat-workspace .model-options label {
+    min-height: 44px;
   }
 }

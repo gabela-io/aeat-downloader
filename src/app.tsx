@@ -69,11 +69,20 @@ let pageIndex = 0;
 // View state that previously lived in the DOM.
 const THEME_KEY = "aeat-theme";
 const MODELS = ["130", "303", "349", "347", "390", "100"];
+const MODEL_NAMES: Record<string, string> = {
+  "100": "Renta (IRPF)",
+  "130": "Pago fraccionado IRPF",
+  "303": "IVA trimestral",
+  "347": "Operaciones con terceros",
+  "349": "Operaciones intracomunitarias",
+  "390": "Resumen anual IVA",
+};
 let theme: ThemeChoice = readTheme(THEME_KEY);
 // The concrete way out of an access failure, shown inside the status message.
 type StatusAction = "certificate" | "permission";
+// Empty until there is something to report.
 let status: { text: string; error: boolean; action?: StatusAction } = {
-  text: "Listo para consultar. Mantén esta pestaña abierta durante el lote.",
+  text: "",
   error: false,
 };
 class PermissionError extends Error {}
@@ -134,6 +143,9 @@ function message(text: string, error = false, action?: StatusAction): void {
   status = { text, error, action };
   update();
 }
+// "1 consulta", "2 consultas"; irregular plurals pass their own form.
+const count = (n: number, one: string, many = `${one}s`) =>
+  `${n} ${n === 1 ? one : many}`;
 const timedOut = (error: unknown) =>
   error instanceof DOMException && error.name === "TimeoutError";
 function errorText(error: unknown): string {
@@ -343,7 +355,7 @@ async function queryBatch(signal: AbortSignal): Promise<void> {
     await save();
     update();
     message(
-      `Consultando modelo ${query.selection.model}, ejercicio ${query.selection.year}… Si Chrome solicita el certificado, selecciónalo tú.`,
+      `Consultando modelo ${query.selection.model}, ejercicio ${query.selection.year}… Mantén esta pestaña abierta; si Chrome solicita el certificado, selecciónalo tú.`,
     );
     try {
       const rows = await queryDeclarations(query.selection, signal);
@@ -369,7 +381,7 @@ async function queryBatch(signal: AbortSignal): Promise<void> {
   }
   const failed = queries.filter((query) => query.state === "error").length;
   message(
-    `Lote consultado: ${archive.visible.length} declaraciones. ${failed ? `Hay ${failed} consultas con error; puedes reintentarlas.` : "Revisa la selección antes de descargar."}`,
+    `Lote consultado: ${count(archive.visible.length, "declaración", "declaraciones")}. ${failed ? `Hay ${count(failed, "consulta")} con error; puedes reintentarlas.` : "Revisa la selección antes de descargar."}`,
     failed > 0,
   );
 }
@@ -434,17 +446,17 @@ const downloadSelection = () =>
         selected.has(key) &&
         ["pending", "error"].includes(archive.entries[key].state),
     );
-    let count = 0;
+    let saved = 0;
     for (const key of keys) {
       signal.throwIfAborted();
-      message(`Descargando ${count + 1} de ${keys.length}…`);
+      message(`Descargando ${saved + 1} de ${keys.length}…`);
       await downloadEntry(archive.entries[key], signal);
       selected.delete(key);
-      count++;
+      saved++;
       update();
     }
     message(
-      `${count} PDF guardados. El inventario conserva sus huellas SHA-256.`,
+      `${count(saved, "PDF guardado", "PDF guardados")}. El inventario conserva sus huellas SHA-256.`,
     );
   });
 const refresh = () =>
@@ -532,8 +544,23 @@ function changeYearFrom(): void {
 }
 const value = (event: Event) => (event.currentTarget as HTMLInputElement).value;
 const dmy = (date: string) => date.split("-").reverse().join("/");
+// Puts a truncated query back in the form so the owner narrows its dates.
+// It runs nothing and does not split the query.
+function narrowQuery(query: QueryTask): void {
+  const { model, year, from, to } = query.selection;
+  Object.assign(form, {
+    models: [model],
+    yearFrom: String(year),
+    yearTo: String(year),
+    from,
+    to,
+  });
+  consultationOpen = dateOptionsOpen = true;
+  update();
+  document.getElementById("from")?.focus();
+}
 
-function QueryItem(props: { query: QueryTask }) {
+function QueryItem(props: { query: QueryTask; busy: boolean }) {
   const { query } = props;
   const key = `${query.selection.model}/${query.selection.year}`;
   return (
@@ -541,9 +568,20 @@ function QueryItem(props: { query: QueryTask }) {
       <div class="query-heading">
         <strong>{`Modelo ${query.selection.model} · ${query.selection.year}`}</strong>
         <span class={query.state}>
-          {`${queryLabels[query.state]}${query.keys.length ? ` · ${query.keys.length} documentos` : ""}`}
+          {`${queryLabels[query.state]}${query.keys.length ? ` · ${count(query.keys.length, "documento")}` : ""}`}
         </span>
       </div>
+      {query.state === "limited" && (
+        <button
+          type="button"
+          class="narrow-query text-action wa-brand wa-plain"
+          aria-label={`Acotar esta consulta: modelo ${query.selection.model}, ejercicio ${query.selection.year}`}
+          disabled={props.busy}
+          onClick={() => narrowQuery(query)}
+        >
+          Acotar esta consulta
+        </button>
+      )}
       {query.error && (
         <details
           open={expandedQueryErrors.has(key)}
@@ -630,8 +668,11 @@ function App() {
       selected.delete(key);
   const busy = !!operation || !ready;
   const queries = archive.batch?.queries ?? [];
-  const issues = queries.filter((query) =>
-    ["error", "limited"].includes(query.state),
+  const failedQueries = queries.filter(
+    (query) => query.state === "error",
+  ).length;
+  const limitedQueries = queries.filter(
+    (query) => query.state === "limited",
   ).length;
   const resolved = queries.filter((query) =>
     ["done", "limited"].includes(query.state),
@@ -681,6 +722,7 @@ function App() {
         <div class="identidad">
           <h1>Histórico AEAT</h1>
           <span class="marca">Descargador de justificantes</span>
+          <span class="entorno">AEAT · Producción · Solo consulta</span>
         </div>
         <div class="header-tools">
           <label class="theme-control" for="theme">
@@ -710,11 +752,6 @@ function App() {
           >
             <summary>Configurar consulta</summary>
             <p>Declaraciones ya presentadas y sus justificantes PDF.</p>
-            <wa-callout class="aeat-environment" variant="warning" size="s">
-              <strong>AEAT · Producción · Solo consulta</strong>
-              <br />
-              Esta vista no presenta ni modifica declaraciones.
-            </wa-callout>
             <form
               id="query-form"
               onSubmit={submitQuery}
@@ -772,7 +809,7 @@ function App() {
                           update();
                         }}
                       />{" "}
-                      {model}
+                      {`${model} · ${MODEL_NAMES[model]}`}
                     </label>
                   ))}
                 </fieldset>
@@ -854,7 +891,7 @@ function App() {
                   {!ready
                     ? ""
                     : modelCount && yearCount > 0
-                      ? `${modelCount} modelos × ${yearCount} ejercicios · ${modelCount * yearCount} consultas`
+                      ? `${count(modelCount, "modelo")} × ${count(yearCount, "ejercicio")} · ${count(modelCount * yearCount, "consulta")}`
                       : "Selecciona modelos y ejercicios."}
                 </p>
                 <button class="wa-brand wa-accent" type="submit">
@@ -890,23 +927,26 @@ function App() {
           <h2 id="results-title" tabindex={-1}>
             Justificantes presentados
           </h2>
-          <p class="aeat-intro">AEAT · Producción · Solo consulta</p>
           <p id="scope">
             {batch
-              ? `Lote: ${batch.nif} · Modelos ${batch.models.join(", ")} · Ejercicios ${batch.yearFrom}–${batch.yearTo} · Presentaciones del ${batch.from} al ${batch.to}`
+              ? `Lote: ${batch.nif} · Modelos ${batch.models.join(", ")} · Ejercicios ${batch.yearFrom}–${batch.yearTo} · Presentaciones del ${dmy(batch.from)} al ${dmy(batch.to)}`
               : "Selecciona modelos y ejercicios para reunir sus justificantes."}
           </p>
           <div class="acciones">
             <div>
               <strong id="count">
                 {archive.visible.length
-                  ? `${archive.visible.length} declaraciones`
+                  ? count(
+                      archive.visible.length,
+                      "declaración",
+                      "declaraciones",
+                    )
                   : archive.batch
                     ? "0 declaraciones recuperadas"
                     : "Sin consulta"}
               </strong>
               <p id="download-summary">
-                {`${countIn(["done"])} descargados · ${countIn(["pending", "error"])} pendientes${uncertain ? ` · ${uncertain} por revisar` : ""}`}
+                {`${count(countIn(["done"]), "descargado")} · ${count(countIn(["pending", "error"]), "pendiente")}${uncertain ? ` · ${uncertain} por revisar` : ""}`}
               </p>
             </div>
             <div class="botones">
@@ -935,7 +975,7 @@ function App() {
           <wa-callout
             id="status"
             class={status.error ? "estado error" : "estado"}
-            variant={status.error ? "warning" : "neutral"}
+            variant={status.error ? "danger" : "neutral"}
             size="s"
             role="status"
             aria-live="polite"
@@ -974,8 +1014,8 @@ function App() {
             hidden={!archive.saturated}
           >
             Alguna consulta devolvió 100 declaraciones y puede estar incompleta.
-            Revisa el modelo y ejercicio en el lote y acota las fechas para
-            recuperar el resto.
+            En la lista de consultas, «Acotar esta consulta» la lleva al
+            formulario para reducir sus fechas.
           </wa-callout>
           <section
             id="batch-panel"
@@ -986,14 +1026,14 @@ function App() {
             <div class="batch-overview">
               <span id="query-progress">
                 {queries.length
-                  ? `${resolved} de ${queries.length} consultas completadas`
+                  ? `${resolved} de ${count(queries.length, "consulta completada", "consultas completadas")}`
                   : ""}
               </span>
               <button
                 id="show-issues"
                 type="button"
-                class="text-action wa-danger wa-plain"
-                hidden={issues === 0}
+                class="text-action wa-neutral wa-plain"
+                hidden={failedQueries + limitedQueries === 0}
                 onClick={() => {
                   batchDetailsOpen = true;
                   queryFilter = "issues";
@@ -1001,7 +1041,16 @@ function App() {
                   document.getElementById("query-filter")?.focus();
                 }}
               >
-                {`${issues} con incidencias`}
+                {failedQueries > 0 && (
+                  <span class="error">{`${failedQueries} con error`}</span>
+                )}
+                {/* Non-breaking: a flex button trims plain spaces at item edges. */}
+                {failedQueries > 0 && limitedQueries > 0 && "\u00a0·\u00a0"}
+                {limitedQueries > 0 && (
+                  <span class="limited">
+                    {count(limitedQueries, "incompleta")}
+                  </span>
+                )}
               </button>
               <button
                 id="resume"
@@ -1046,6 +1095,7 @@ function App() {
                   <QueryItem
                     key={`${query.selection.model}/${query.selection.year}`}
                     query={query}
+                    busy={busy}
                   />
                 ))}
               </ul>
@@ -1110,7 +1160,7 @@ function App() {
             </div>
             <div class="selection-summary">
               <p id="selection-note">
-                {`${selected.size} seleccionados${hiddenSelected ? ` · ${hiddenSelected} fuera de estos filtros` : ""}`}
+                {`${count(selected.size, "seleccionado")}${hiddenSelected ? ` · ${hiddenSelected} fuera de estos filtros` : ""}`}
               </p>
               <button
                 id="clear-selection"
@@ -1188,7 +1238,7 @@ function App() {
             hidden={filtered.length === 0}
           >
             <span id="page-range" aria-live="polite">
-              {`${start + 1}–${Math.min(start + pageSize, filtered.length)} de ${filtered.length} documentos`}
+              {`${start + 1}–${Math.min(start + pageSize, filtered.length)} de ${count(filtered.length, "documento")}`}
             </span>
             <div>
               <button
@@ -1255,9 +1305,7 @@ function App() {
           <details class="ayuda">
             <summary>Alcance y datos guardados</summary>
             <p>
-              MVP con pruebas locales. La compatibilidad real del certificado de
-              Windows y del cotejo PDF está pendiente de comprobar. Solo
-              descarga PDF; no recupera los TXT originales ni envía datos a
+              Solo descarga PDF; no recupera los TXT originales ni envía datos a
               terceros: solo contacta con los dos dominios de AEAT indicados
               abajo.
             </p>
@@ -1308,7 +1356,7 @@ function App() {
           <dialog id="forget-dialog" aria-labelledby="forget-dialog-title">
             <h3 id="forget-dialog-title">¿Borrar el historial local?</h3>
             <p id="forget-summary">
-              {`Se olvidarán ${entries.length} declaraciones: ${entries.filter((entry) => entry.state === "done").length} descargadas y ${entries.filter((entry) => entry.state === "uncertain").length} por revisar. Los PDF descargados siguen en Descargas.`}
+              {`Historial local: ${count(entries.length, "declaración", "declaraciones")}${archive.visible.length ? `, ${archive.visible.length} en este lote` : ""}; ${count(entries.filter((entry) => entry.state === "done").length, "descargada")} y ${entries.filter((entry) => entry.state === "uncertain").length} por revisar. Se borra todo el historial, no solo el lote. Los PDF descargados siguen en Descargas.`}
             </p>
             <p>
               Exporta antes el inventario si quieres conservar qué se descargó y
@@ -1391,7 +1439,6 @@ async function initialize(): Promise<void> {
   consultationOpen = !archive.batch || matchMedia("(min-width: 851px)").matches;
   ready = true;
   update();
-  if (archive.visible.length) message("");
 }
 initializeTheme(THEME_KEY, () => theme);
 update();

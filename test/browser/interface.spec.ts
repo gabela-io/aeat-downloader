@@ -76,10 +76,10 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
           from: selection.from,
           to: selection.to,
         },
-        state: index < 55 ? "done" : "error",
+        state: index < 55 ? "done" : index === 55 ? "limited" : "error",
         keys: [],
         error:
-          index < 55
+          index < 56
             ? undefined
             : "AEAT devolvió un error de consulta. Revisa identidad, fechas y acceso en la Sede; no confirma ausencia de declaraciones.",
       }));
@@ -113,6 +113,35 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
       `chrome-extension://${new URL(worker.url()).host}/index.html`,
     );
     await expect(page.locator("#count")).toHaveText("145 declaraciones");
+    // The environment shows once, as a quiet mark beside the title.
+    await expect(
+      page.getByText("AEAT · Producción · Solo consulta", { exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.locator(".cabecera").getByText("AEAT · Producción · Solo consulta"),
+    ).toBeVisible();
+    // Each model checkbox carries its short name in its accessible name.
+    for (const name of [
+      "100 · Renta (IRPF)",
+      "130 · Pago fraccionado IRPF",
+      "303 · IVA trimestral",
+      "347 · Operaciones con terceros",
+      "349 · Operaciones intracomunitarias",
+      "390 · Resumen anual IVA",
+    ])
+      await expect(
+        page.getByRole("checkbox", { name, exact: true }),
+      ).toBeVisible();
+    // Scope and help: dd/mm/aaaa dates, and the help opens with the facts.
+    await expect(page.locator("#scope")).toContainText(
+      "Presentaciones del 01/01/2015 al 06/10/2026",
+    );
+    await page.locator(".ayuda > summary").click();
+    await expect(page.locator(".ayuda p").first()).toHaveText(
+      /^Solo descarga PDF;/,
+    );
+    await expect(page.locator(".ayuda")).not.toContainText("MVP");
+    await page.locator(".ayuda > summary").click();
     // The toolbar button focuses the open page, also after the skip link adds
     // a fragment to its URL, instead of opening a second tab.
     await page.locator(".skip-link").focus();
@@ -149,9 +178,17 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
       "",
     );
     await expect(page.locator("#query-progress")).toHaveText(
-      "55 de 72 consultas completadas",
+      "56 de 72 consultas completadas",
     );
+    // Errors and truncated queries are counted apart; the errors match resume.
+    await expect(page.locator("#show-issues")).toHaveText(
+      "16 con error · 1 incompleta",
+    );
+    await expect(page.locator("#resume")).toHaveText("Reanudar consultas (16)");
     await page.locator("#show-issues").click();
+    await expect(
+      page.getByRole("button", { name: /^Acotar esta consulta/ }),
+    ).toHaveCount(1);
     await expect(page.locator("#queries > li")).toHaveCount(17);
     await page.locator("#queries summary").first().click();
     await expect(page.locator("#queries details[open] p")).toContainText(
@@ -194,6 +231,30 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
     );
     await page.locator("#document-state").selectOption("issues");
     await expect(page.locator("#results li")).toHaveCount(5);
+    // Three severities: an unconfirmed download and a truncated query share the
+    // attention colour; failed downloads and queries the error colour.
+    await page.locator("#batch-details > summary").click();
+    const colours = await page.evaluate(() =>
+      Object.fromEntries(
+        [
+          ".aeat-state.uncertain",
+          ".aeat-state.error",
+          ".query-heading .limited",
+          ".query-heading .error",
+        ].map((selector) => [
+          selector,
+          getComputedStyle(document.querySelector(selector)!).color,
+        ]),
+      ),
+    );
+    await page.locator("#batch-details > summary").click();
+    expect(colours[".aeat-state.uncertain"]).toBe(
+      colours[".query-heading .limited"],
+    );
+    expect(colours[".aeat-state.error"]).toBe(colours[".query-heading .error"]);
+    expect(colours[".aeat-state.uncertain"]).not.toBe(
+      colours[".aeat-state.error"],
+    );
     await page.locator("#document-search").fill("NO MATCH");
     await expect(page.locator("#filtered-empty")).toBeVisible();
     await page.locator("#document-search").fill("");
@@ -212,6 +273,7 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
         );
       for (const theme of ["light", "dark"]) {
         await page.locator("#theme").selectOption(theme);
+        await expect(page.locator(".entorno")).toBeVisible();
         await page.evaluate(() => window.scrollTo(0, 0));
         expect(
           await page.evaluate(
@@ -231,6 +293,19 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
           });
       }
     }
+    // At 320 px the open form, model names included, fits without overflow.
+    await page.locator("#consultation > summary").click();
+    expect(
+      await page.evaluate(() => [
+        document.documentElement.scrollWidth <= innerWidth,
+        ...[...document.querySelectorAll(".model-options label")].map(
+          (label) => label.getBoundingClientRect().right <= innerWidth,
+        ),
+      ]),
+    ).toEqual(Array(7).fill(true));
+    expect(
+      (await page.locator("#nif").boundingBox())!.height,
+    ).toBeGreaterThanOrEqual(44);
     // Downloaded rows: a checked, locked box and their own "Descargar de nuevo".
     await page.locator("#document-state").selectOption("done");
     await expect(
