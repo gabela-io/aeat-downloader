@@ -28,6 +28,19 @@
   accent-color: var(--wa-color-brand-fill-loud);
   scrollbar-color: var(--wa-color-neutral-border-loud) var(--canvas);
 }
+/* Non-text contrast (WCAG 1.4.11): field, select and outlined-button borders and
+ * the focus ring reach 3:1 on every surface they sit on, selected rows included.
+ * The theme's own steps (gray/blue/red 60 in light, 40 in dark) stay below it;
+ * the 50 step clears it in both themes. */
+.wa-light,
+.wa-dark {
+  --wa-color-neutral-border-loud: var(--wa-color-neutral-50);
+  --wa-color-brand-border-loud: var(--wa-color-brand-50);
+  --wa-color-danger-border-loud: var(--wa-color-danger-50);
+}
+.wa-light {
+  --wa-color-focus: var(--wa-color-brand-50);
+}
 html,
 body {
   background: var(--canvas);
