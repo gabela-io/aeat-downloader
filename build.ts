@@ -43,9 +43,18 @@ await writeFile(
       optional_host_permissions: AEAT_ORIGINS,
       action: { default_title: "Abrir Histórico AEAT" },
       background: { service_worker: "background.js", type: "module" },
+      // The browser enforces the network rule: only the two AEAT origins.
+      // Inline styles come from Preact and Web Awesome; icons are data: URIs.
       content_security_policy: {
-        extension_pages:
-          "script-src 'self'; object-src 'none'; base-uri 'none'",
+        extension_pages: [
+          "default-src 'self'",
+          "script-src 'self'",
+          `connect-src ${AEAT_ORIGINS.map((origin) => origin.replace("/*", "")).join(" ")}`,
+          "img-src 'self' data:",
+          "style-src 'self' 'unsafe-inline'",
+          "object-src 'none'",
+          "base-uri 'none'",
+        ].join("; "),
       },
     },
     null,
