@@ -7,7 +7,8 @@ Cambios relevantes de aeat-downloader. El formato sigue
 ## [Sin publicar]
 
 Correcciones de la revisión de código y de interfaz
-([specs/002-review-fixes](specs/002-review-fixes/spec.md)).
+([specs/002-review-fixes](specs/002-review-fixes/spec.md)) y refinamientos de la
+interfaz ([specs/003-ui-refinements](specs/003-ui-refinements/spec.md)).
 
 ### Añadido
 
@@ -20,6 +21,10 @@ Correcciones de la revisión de código y de interfaz
   («Abrir acceso con certificado» o «Conceder acceso»). Antes del primer
   permiso se avisa de que Chrome pedirá acceso a los dos dominios y, mientras
   el diálogo está abierto, el estado dice «Esperando el permiso de Chrome…».
+- «Acotar esta consulta» en cada consulta truncada (100 filas): lleva su modelo
+  y ejercicio al formulario y abre las fechas, sin lanzar nada.
+- Nombre corto junto a cada modelo («130 · Pago fraccionado IRPF»), también en
+  su nombre accesible.
 
 ### Cambiado
 
@@ -32,6 +37,20 @@ Correcciones de la revisión de código y de interfaz
   como «Ya descargado».
 - Bordes de campos y botones contorneados, y anillo de foco, con contraste de
   al menos 3:1 en los dos temas.
+- Tres niveles de color: informativo, atención (consulta incompleta, descarga
+  por revisar) y error (consulta o descarga fallida). «Revisar descarga» e
+  «Incompleta» dejan de usar el color de error; los errores de `#status` usan
+  el aviso de error.
+- «AEAT · Producción · Solo consulta» aparece una sola vez, junto al título. Sin
+  mensaje de reposo cuando no hay nada que contar.
+- El recuento de incidencias separa errores e incompletas («12 con error · 1
+  incompleta») y cuadra con «Reanudar consultas (12)».
+- El diálogo de borrado distingue el historial local entero del lote visible.
+- Singular en los recuentos de uno, fechas del lote en dd/mm/aaaa y la ayuda
+  empieza por los hechos, sin la nota de MVP.
+- Tamaños de letra en `rem`: la preferencia de tamaño de letra de Chrome escala
+  la página. Con movimiento reducido la barra de progreso no se anima, y en
+  pantallas de 700 px o menos los campos miden 44 px de alto.
 
 ### Corregido
 
@@ -43,6 +62,8 @@ Correcciones de la revisión de código y de interfaz
 - El parser rechaza atributos, texto suelto, un `<error>` junto a filas y el
   mismo justificante repetido.
 - La fecha «hasta» por defecto es hoy en hora local, no en UTC.
+- «Abrir acceso con certificado» dentro del aviso parecía deshabilitado: usa el
+  color de texto del aviso.
 
 ## [0.1.0] - Sin publicar
 

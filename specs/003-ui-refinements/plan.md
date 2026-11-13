@@ -25,22 +25,22 @@ preferencia de Chrome.
 
 ## Diseño por punto
 
-| Punto              | Dónde                    | Cómo                                                                                                                         |
-| ------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `rem`              | `style.css`              | cada `font-size: Npx` → `N/16 rem`; fuera el `font-size` de `:root`.                                                         |
-| Movimiento         | `style.css`              | `wa-progress-bar::part(indicator) { transition: none }` dentro de `prefers-reduced-motion: reduce`.                          |
-| 44 px              | `style.css`              | en `max-width: 700px`, `input:not([type=checkbox]), select { min-height: 44px }`.                                            |
-| Plurales           | `app.tsx`                | `count(n, singular, plural?)` usada en todos los recuentos.                                                                  |
-| Diálogo            | `app.tsx`                | «Se olvidarán las N declaraciones del historial local (M en este lote): …».                                                  |
-| Botón del aviso    | `style.css`              | `#status-action { color: inherit }`: no estaba deshabilitado; era el gris `quiet` sobre el fondo de color del aviso.         |
-| `#scope`           | `app.tsx`                | `dmy(batch.from)`, `dmy(batch.to)`.                                                                                          |
-| Ayuda              | `app.tsx`                | primer párrafo sin la frase de MVP.                                                                                          |
-| Modelos            | `app.tsx`, `style.css`   | `MODEL_NAMES`; etiqueta «130 · Pago fraccionado IRPF»; la rejilla 3×2 pasa a una columna.                                    |
-| Gravedad           | `app.tsx`, `style.css`   | `#status` `danger`/`neutral`; `--attention` (`warning-on-quiet`) para `uncertain`, `limited` y la parte «incompleta».          |
-| Entorno            | `app.tsx`, `style.css`   | `.entorno` en `.identidad`; fuera el callout lateral y `.aeat-intro`.                                                         |
-| Reposo             | `app.tsx`                | `status` inicial vacío.                                                                                                      |
-| Acotar             | `app.tsx`                | `narrowQuery(query)`: modelo, ejercicio y fechas de esa consulta al formulario; abre `#consultation` y `#date-options`; foco en `#from`. |
-| Recuentos          | `app.tsx`                | `#show-issues` = «N con error · M incompleta(s)»; `#limit` remite a «Acotar esta consulta».                                  |
+| Punto           | Dónde                  | Cómo                                                                                                                                     |
+| --------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `rem`           | `style.css`            | cada `font-size: Npx` → `N/16 rem`; fuera el `font-size` de `:root`.                                                                     |
+| Movimiento      | `style.css`            | `wa-progress-bar::part(indicator) { transition: none }` dentro de `prefers-reduced-motion: reduce`.                                      |
+| 44 px           | `style.css`            | en `max-width: 700px`, `input:not([type=checkbox]), select { min-height: 44px }`.                                                        |
+| Plurales        | `app.tsx`              | `count(n, singular, plural?)` usada en todos los recuentos.                                                                              |
+| Diálogo         | `app.tsx`              | «Se olvidarán las N declaraciones del historial local (M en este lote): …».                                                              |
+| Botón del aviso | `style.css`            | `#status-action { color: inherit }`: no estaba deshabilitado; era el gris `quiet` sobre el fondo de color del aviso.                     |
+| `#scope`        | `app.tsx`              | `dmy(batch.from)`, `dmy(batch.to)`.                                                                                                      |
+| Ayuda           | `app.tsx`              | primer párrafo sin la frase de MVP.                                                                                                      |
+| Modelos         | `app.tsx`, `style.css` | `MODEL_NAMES`; etiqueta «130 · Pago fraccionado IRPF»; la rejilla 3×2 pasa a una columna.                                                |
+| Gravedad        | `app.tsx`, `style.css` | `#status` `danger`/`neutral`; `--attention` (`warning-on-quiet`) para `uncertain`, `limited` y la parte «incompleta».                    |
+| Entorno         | `app.tsx`, `style.css` | `.entorno` en `.identidad`; fuera el callout lateral y `.aeat-intro`.                                                                    |
+| Reposo          | `app.tsx`              | `status` inicial vacío.                                                                                                                  |
+| Acotar          | `app.tsx`              | `narrowQuery(query)`: modelo, ejercicio y fechas de esa consulta al formulario; abre `#consultation` y `#date-options`; foco en `#from`. |
+| Recuentos       | `app.tsx`              | `#show-issues` = «N con error · M incompleta(s)»; `#limit` remite a «Acotar esta consulta».                                              |
 
 ## Pruebas
 

@@ -37,7 +37,7 @@ En la Sede cada consulta es un modelo y un ejercicio, y cada justificante se des
 - Búsqueda y filtros por ejercicio y estado, 25 documentos por página, tema claro y oscuro.
 - Exportación del inventario a JSON y borrado del índice local.
 
-Un error de la AEAT, una respuesta vacía o una página de acceso no cuentan como «no hay declaraciones»: la consulta queda con error y puedes repetirla. Si una consulta devuelve cien filas, puede estar truncada, y la extensión te avisa para que acotes las fechas.
+Un error de la AEAT, una respuesta vacía o una página de acceso no cuentan como «no hay declaraciones»: la consulta queda con error y puedes repetirla. Si una consulta devuelve cien filas, puede estar truncada: la extensión la marca como incompleta y su botón «Acotar esta consulta» lleva su modelo y ejercicio al formulario para que reduzcas las fechas.
 
 ## Instalación
 

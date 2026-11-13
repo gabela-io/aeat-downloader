@@ -1,6 +1,6 @@
 # Especificación: refinamientos de la interfaz
 
-**Rama**: `003-ui-refinements` · **Creada**: 2026-11-13 · **Estado**: en curso
+**Rama**: `003-ui-refinements` · **Creada**: 2026-11-13 · **Estado**: implementada
 
 **Entrada**: refinar la interfaz actual en los puntos de la crítica de
 Impeccable que aprobó el titular: arreglos pequeños, gravedad por color, una
