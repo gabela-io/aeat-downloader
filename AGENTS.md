@@ -12,7 +12,7 @@ Solo lectura. Extraída de `autonomo/apps/invoices-extension` 0.8.0.
 | `src/app.tsx`                         | página: estado, cola persistente, bloqueo entre pestañas, descargas, vista      |
 | `src/background.ts`                   | el icono abre o enfoca la página                                                |
 | `src/theme.ts`, `src/style.css`       | tema claro/oscuro sobre Web Awesome                                             |
-| `build.ts`                            | `Bun.build` + `manifest.json` (permisos tomados de `AEAT_ORIGINS`)              |
+| `build.ts`                            | `Bun.build` + `manifest.json` (permisos y CSP tomados de `AEAT_ORIGINS`)        |
 | `test/client.test.ts`                 | `bun test`, con `fetch` simulado                                                |
 | `test/browser/*.spec.ts`              | Playwright con la extensión real, DNS bloqueado y rutas interceptadas           |
 | `nix/`                                | blueprint (`prefix = "nix/"`): devshell, formatter, paquete, check de navegador |
@@ -32,8 +32,9 @@ Solo lectura. Extraída de `autonomo/apps/invoices-extension` 0.8.0.
 ## Invariantes
 
 - Solo `www1`/`www2.agenciatributaria.gob.es`, por POST de formulario con
-  `redirect: "error"`. Ningún otro destino de red; nada a terceros. Las pruebas
-  de navegador fallan si aparece otra URL.
+  `redirect: "error"`. Ningún otro destino de red; nada a terceros. La CSP del
+  manifiesto lo impone (`connect-src` con esos dos orígenes) y las pruebas de
+  navegador fallan si aparece otra URL.
 - Permisos del manifiesto: `downloads`, `storage` y los dos dominios como
   `optional_host_permissions`. Añadir uno exige justificarlo en la especificación.
 - Una respuesta de error, vacía o HTML nunca significa «sin declaraciones».

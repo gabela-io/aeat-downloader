@@ -59,9 +59,10 @@ Si trabajas en WSL y usas Chrome de Windows, copia la carpeta a una ruta de Wind
 ## Uso
 
 1. Pulsa el icono de la extensión. Escribe tu NIF o NIE y tus apellidos y nombre, marca los modelos y elige los ejercicios. En «Fechas de presentación», cubre también el año siguiente al último ejercicio.
-2. Pulsa «Consultar AEAT» y concede el acceso a los dos dominios de la AEAT. Si Chrome pide el certificado, selecciónalo. Si la identificación falla, «Abrir acceso con certificado» abre la consulta en otra pestaña: identifícate allí y vuelve a consultar.
+2. Pulsa «Consultar AEAT» y concede el acceso a los dos dominios de la AEAT. Si Chrome pide el certificado, selecciónalo. Si la identificación falla, el aviso de error trae «Abrir acceso con certificado», que abre la consulta en otra pestaña: identifícate allí y vuelve a consultar. Si denegaste el acceso, el aviso trae «Conceder acceso».
 3. Revisa los justificantes, filtra si hace falta y pulsa «Descargar selección». Deja la pestaña abierta mientras dure el lote.
-4. «Actualizar estados» compara el índice con las descargas de Chrome. Si una descarga se quedó sin confirmar, aparece como «Revisar descarga»: mira tus archivos antes de pulsar «Preparar otra descarga».
+4. «Actualizar estados» compara el índice con las descargas de Chrome. Si una descarga se quedó sin confirmar, aparece como «Revisar descarga»: mira tus archivos antes de pulsar «Preparar otra descarga», que descarga solo esa entrada.
+5. Para volver a bajar un justificante ya descargado, pulsa «Descargar de nuevo» en su fila. Chrome guarda la copia con otro nombre y no sobrescribe el archivo que ya tengas.
 
 ## Privacidad y seguridad
 
@@ -74,8 +75,8 @@ La extensión solo se conecta a dos direcciones fijas, siempre por POST y sin se
 
 - Pide los permisos `downloads` y `storage`. El acceso a los dos dominios de la AEAT es opcional y lo concedes al consultar por primera vez.
 - Chrome gestiona el certificado. La extensión no ve la clave privada ni el PIN.
-- No hay scripts remotos ni otros dominios, y nada sale hacia terceros.
-- El NIF, el nombre y los identificadores de cada declaración se guardan en `chrome.storage.local` de tu perfil hasta que pulses «Borrar historial local AEAT». Los PDF siguen en Descargas. El modo incógnito tiene su propio índice.
+- No hay scripts remotos ni otros dominios, y nada sale hacia terceros. La política de seguridad (CSP) del manifiesto lo impone en el navegador: la página solo puede conectar con esos dos orígenes.
+- El NIF, el nombre y los identificadores de cada declaración se guardan en `chrome.storage.local` de tu perfil hasta que pulses «Borrar historial local AEAT», que pide confirmación, dice cuántas declaraciones se olvidan y ofrece exportar antes el inventario. Los PDF siguen en Descargas. El modo incógnito tiene su propio índice.
 - El inventario exportado contiene datos fiscales personales. Guárdalo junto a tus documentos.
 
 ## Desarrollo

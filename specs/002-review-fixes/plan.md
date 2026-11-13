@@ -23,18 +23,18 @@ Web Awesome 3.14, Bun, Playwright 1.63 con Chromium de nixpkgs.
 
 ## Diseño por punto
 
-| Punto | Dónde | Cómo |
-| ----- | ----- | ---- |
-| CSP | `build.ts` | `connect-src` desde `AEAT_ORIGINS` sin `/*`; `default-src 'self'`; comentario corregido en `app.tsx` y en `interface.spec.ts`. |
-| Red / UTF-8 | `client.ts` | `AccessError` (HTTP no OK, XML que no es el esperado) y `NetworkError` (solo `TypeError` de `fetch` o de `read()`); `decode` en `try` con error propio. `errorText` ya no traduce cualquier `TypeError`. |
-| Descarga rechazada | `app.tsx` `downloadEntry` | si `downloads.download` rechaza, la entrada pasa a `error` antes del `catch` común. |
-| Icono | `background.ts` | `getContexts` por tipo y comparación sin fragmento; `openPage` expuesto en `globalThis` para la prueba. |
-| Parser | `client.ts` | atributos, texto suelto (`childNodes`), `<error>` junto a otros hijos y justificantes repetidos → `Error`. |
-| Fecha local | `client.ts` `localDay` | `getFullYear/getMonth/getDate`; prueba con `TZ=Europe/Madrid`. |
-| Borrar | `app.tsx` | zona propia tras la ayuda; `<dialog>` modal con recuentos, «Exportar inventario» y «Borrar historial». |
-| Volver a descargar | `app.tsx` | `downloadAgain(key)` en un `run()`; botón por fila para `done` y `uncertain`; foco a la acción de la fila al terminar. Casilla marcada y deshabilitada con «Ya descargado». |
-| Errores con acción | `app.tsx` | `status.action` (`certificate`/`permission`); aviso de permiso según `chrome.permissions.contains`; «Esperando el permiso de Chrome…»; `aria-invalid` en `#nif`. |
-| Contraste | `style.css` | redefinir `--wa-color-neutral-border-loud`, `--wa-color-brand/danger-border-loud` y `--wa-color-focus` a pasos más oscuros (claro) o más claros (oscuro) de la paleta de Web Awesome. Medición con el método de HANDOFF-B. |
+| Punto              | Dónde                     | Cómo                                                                                                                                                                                                                       |
+| ------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSP                | `build.ts`                | `connect-src` desde `AEAT_ORIGINS` sin `/*`; `default-src 'self'`; comentario corregido en `app.tsx` y en `interface.spec.ts`.                                                                                             |
+| Red / UTF-8        | `client.ts`               | `AccessError` (HTTP no OK, XML que no es el esperado) y `NetworkError` (solo `TypeError` de `fetch` o de `read()`); `decode` en `try` con error propio. `errorText` ya no traduce cualquier `TypeError`.                   |
+| Descarga rechazada | `app.tsx` `downloadEntry` | si `downloads.download` rechaza, la entrada pasa a `error` antes del `catch` común.                                                                                                                                        |
+| Icono              | `background.ts`           | `getContexts` por tipo y comparación sin fragmento; `openPage` expuesto en `globalThis` para la prueba.                                                                                                                    |
+| Parser             | `client.ts`               | atributos, texto suelto (`childNodes`), `<error>` junto a otros hijos y justificantes repetidos → `Error`.                                                                                                                 |
+| Fecha local        | `client.ts` `localDay`    | `getFullYear/getMonth/getDate`; prueba con `TZ=Europe/Madrid`.                                                                                                                                                             |
+| Borrar             | `app.tsx`                 | zona propia tras la ayuda; `<dialog>` modal con recuentos, «Exportar inventario» y «Borrar historial».                                                                                                                     |
+| Volver a descargar | `app.tsx`                 | `downloadAgain(key)` en un `run()`; botón por fila para `done` y `uncertain`; foco a la acción de la fila al terminar. Casilla marcada y deshabilitada con «Ya descargado».                                                |
+| Errores con acción | `app.tsx`                 | `status.action` (`certificate`/`permission`); aviso de permiso según `chrome.permissions.contains`; «Esperando el permiso de Chrome…»; `aria-invalid` en `#nif`.                                                           |
+| Contraste          | `style.css`               | redefinir `--wa-color-neutral-border-loud`, `--wa-color-brand/danger-border-loud` y `--wa-color-focus` a pasos más oscuros (claro) o más claros (oscuro) de la paleta de Web Awesome. Medición con el método de HANDOFF-B. |
 
 ## Pruebas
 

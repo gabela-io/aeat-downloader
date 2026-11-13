@@ -1,6 +1,6 @@
 # Especificación: correcciones de la revisión
 
-**Rama**: `002-review-fixes` · **Creada**: 2026-11-13 · **Estado**: en curso
+**Rama**: `002-review-fixes` · **Creada**: 2026-11-13 · **Estado**: implementada
 
 **Entrada**: corregir los defectos de la revisión adversarial de código y los
 problemas P1 de la crítica de interfaz, con pruebas que fallen si se pierden. El
