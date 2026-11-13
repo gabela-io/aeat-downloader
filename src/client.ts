@@ -54,6 +54,20 @@ export function expandBatch(input: BatchSelection): Selection[] {
 // A well-formed service error is isolated to its query. Authentication/network
 // failures and unexpected responses stop the batch instead of opening more prompts.
 export class QueryResponseError extends Error {}
+// Access failures (HTTP status, login page, network or certificate) stop the
+// batch; the page offers the certificate access page next to them.
+export class AccessError extends Error {}
+export class NetworkError extends AccessError {
+  constructor() {
+    super(
+      "No se pudo conectar con AEAT. Comprueba el certificado en Chrome, la conexión y los permisos. No se ha reintentado automáticamente.",
+    );
+  }
+}
+// Only a TypeError raised by fetch itself (or by reading its body) is a network failure.
+function network(error: unknown): never {
+  throw error instanceof TypeError ? new NetworkError() : error;
+}
 export interface Declaration {
   ejercicio: string;
   modelo: string;
@@ -85,6 +99,14 @@ export function validNif(nif: string): boolean {
   if (digits.length !== (prefix ? 7 : 8)) return false;
   const number = Number(String("XYZ".indexOf(prefix)) + digits);
   return "TRWAGMYFPDXBNJZSQVHLCKE"[number % 23] === letter;
+}
+// A day as YYYY-MM-DD in the browser's time zone (toISOString would give UTC).
+export function localDay(date = new Date()): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 export function validDay(value: string): boolean {
   const date = new Date(`${value}T00:00:00Z`);
@@ -136,11 +158,27 @@ export function parseDeclarations(
     root?.tagName !== "servicioConsultasDirectas" ||
     root.namespaceURI
   )
-    throw new Error(
+    throw new AccessError(
       "AEAT no devolvió el XML esperado. Comprueba la identificación con certificado.",
     );
+  // Attributes and loose text between elements are outside the contract.
+  const unexpected = (element: Element) =>
+    element.attributes.length > 0 ||
+    Array.from(element.childNodes).some(
+      (node) =>
+        node.nodeType !== Node.ELEMENT_NODE &&
+        node.nodeType !== Node.COMMENT_NODE &&
+        node.textContent?.trim(),
+    );
+  const children = Array.from(root.children);
+  // An <error> is a service error only when it is the whole answer.
+  if (
+    unexpected(root) ||
+    (children.length > 1 && children.some((child) => child.tagName === "error"))
+  )
+    throw new Error("Respuesta de consulta no admitida.");
   const rows: Declaration[] = [];
-  for (const element of Array.from(root.children)) {
+  for (const element of children) {
     if (element.tagName === "error")
       throw new QueryResponseError(
         "AEAT devolvió un error de consulta. Revisa identidad, fechas y acceso en la Sede; no confirma ausencia de declaraciones.",
@@ -148,6 +186,7 @@ export function parseDeclarations(
     if (
       element.tagName !== "respuestaCorrecta" ||
       element.namespaceURI ||
+      unexpected(element) ||
       rows.length >= 100
     )
       throw new Error("Respuesta de consulta no admitida.");
@@ -157,6 +196,7 @@ export function parseDeclarations(
       const value = field.textContent?.trim() ?? "";
       if (
         field.children.length ||
+        field.attributes.length ||
         field.namespaceURI ||
         !Object.hasOwn(patterns, name) ||
         Object.hasOwn(fields, name) ||
@@ -201,7 +241,8 @@ export function parseDeclarations(
     throw new QueryResponseError(
       "La respuesta está vacía: no se puede confirmar que no haya declaraciones. Comprueba la consulta en la Sede.",
     );
-  if (new Set(rows.map(declarationKey)).size !== rows.length)
+  // The justificante alone identifies the document and names its file.
+  if (new Set(rows.map((row) => row.justificante)).size !== rows.length)
     throw new Error(
       "La respuesta contiene declaraciones duplicadas. Acota la consulta.",
     );
@@ -231,9 +272,9 @@ async function postForm(
     redirect: "error",
     cache: "no-store",
     signal: AbortSignal.any([signal, AbortSignal.timeout(60000)]),
-  });
+  }).catch(network);
   if (!response.ok || !response.body)
-    throw new Error(
+    throw new AccessError(
       `AEAT respondió HTTP ${response.status}. Revisa el acceso con certificado antes de reintentar.`,
     );
   const reader = response.body.getReader();
@@ -241,7 +282,7 @@ async function postForm(
   let size = 0;
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await reader.read().catch(network);
       if (done) break;
       size += value.length;
       if (size > limit)
@@ -279,10 +320,13 @@ export async function queryDeclarations(
     2 * 1024 * 1024,
     signal,
   );
-  return parseDeclarations(
-    new TextDecoder("utf-8", { fatal: true }).decode(bytes),
-    selection,
-  );
+  let xml: string;
+  try {
+    xml = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("La respuesta de AEAT no está en UTF-8.");
+  }
+  return parseDeclarations(xml, selection);
 }
 export async function fetchPdf(
   row: Declaration,

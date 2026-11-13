@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import {
+  AccessError,
   expandBatch,
   fetchPdf,
+  localDay,
+  NetworkError,
   PDF_URL,
   QUERY_URL,
   queryDeclarations,
@@ -151,5 +154,52 @@ describe("AEAT browser transport", () => {
       HOD: "0000",
       HOH: "2359",
     });
+  });
+});
+describe("AEAT failure classification", () => {
+  it("reports only a TypeError from fetch as a network or certificate failure", async () => {
+    globalThis.fetch = mock(async () => {
+      throw new TypeError("Failed to fetch");
+    }) as unknown as typeof fetch;
+    await expect(
+      queryDeclarations(selection, new AbortController().signal),
+    ).rejects.toBeInstanceOf(NetworkError);
+    // Any other rejection from fetch (here, a cancellation) keeps its own type.
+    globalThis.fetch = mock(async () => {
+      throw new DOMException("cancelled", "AbortError");
+    }) as unknown as typeof fetch;
+    const aborted = await queryDeclarations(
+      selection,
+      new AbortController().signal,
+    ).catch((error: unknown) => error);
+    expect(aborted).not.toBeInstanceOf(NetworkError);
+    expect((aborted as DOMException).name).toBe("AbortError");
+    // ISO-8859-1 "ó": a TypeError from the decoder, not from the network.
+    stubFetch(new Response(new Uint8Array([0x3c, 0xf3, 0x3e])));
+    const error = await queryDeclarations(
+      selection,
+      new AbortController().signal,
+    ).catch((error: unknown) => error);
+    expect(error).not.toBeInstanceOf(AccessError);
+    expect((error as Error).message).toBe(
+      "La respuesta de AEAT no está en UTF-8.",
+    );
+    stubFetch(new Response("denied", { status: 403 }));
+    await expect(
+      fetchPdf(row, new AbortController().signal),
+    ).rejects.toBeInstanceOf(AccessError);
+  });
+  it("defaults to the local day, not the UTC one", () => {
+    const zone = process.env.TZ;
+    process.env.TZ = "Europe/Madrid";
+    try {
+      // 00:30 on 1 January in Madrid is still 31 December in UTC.
+      const date = new Date("2027-01-01T00:30:00+01:00");
+      expect(date.toISOString().slice(0, 10)).toBe("2026-12-31");
+      expect(localDay(date)).toBe("2027-01-01");
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
   });
 });
