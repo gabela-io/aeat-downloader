@@ -218,6 +218,12 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
             () => document.documentElement.scrollWidth <= innerWidth,
           ),
         ).toBe(true);
+        // Fields and selects reach the 44 px touch height of buttons.
+        if (width <= 700)
+          for (const field of ["#theme", "#document-search", "#document-year"])
+            expect(
+              (await page.locator(field).boundingBox())!.height,
+            ).toBeGreaterThanOrEqual(44);
         if (width === 1440 || width === 390)
           await page.screenshot({
             path: join(evidence, `aeat-interface-${width}-${theme}.png`),
@@ -243,6 +249,27 @@ test("large AEAT archive: query review, filters, selection, pagination and theme
         });
       }
     }
+    // Reduced motion also reaches the progress bar's shadow root.
+    expect(
+      await page
+        .locator("#batch-progress")
+        .evaluate(
+          (bar) =>
+            getComputedStyle(bar.shadowRoot!.querySelector(".indicator")!)
+              .transitionDuration,
+        ),
+    ).toBe("0s");
+    // Chrome's font-size preference scales the text (sizes in rem).
+    const fontSize = (selector: string) =>
+      page
+        .locator(selector)
+        .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+    const sizes = [await fontSize("#count"), await fontSize("#page-range")];
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Page.setFontSizes", { fontSizes: { standard: 32 } });
+    expect([await fontSize("#count"), await fontSize("#page-range")]).toEqual(
+      sizes.map((size) => size * 2),
+    );
     await page.reload();
     await expect(page.locator("#theme")).toHaveValue("dark");
     // While Chrome's permission prompt is open the page says so; a refusal

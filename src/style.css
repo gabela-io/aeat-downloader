@@ -23,7 +23,7 @@
   --error: var(--wa-color-danger-on-quiet);
   --warning-bg: var(--wa-color-warning-fill-quiet);
   --warning-ink: var(--wa-color-warning-on-quiet);
-  font-size: 16px;
+  /* No root font-size and sizes in rem: Chrome's font-size preference scales the page. */
   line-height: 1.5;
   accent-color: var(--wa-color-brand-fill-loud);
   scrollbar-color: var(--wa-color-neutral-border-loud) var(--canvas);
@@ -60,17 +60,17 @@ p {
   margin: 0;
 }
 h1 {
-  font-size: 24px;
+  font-size: 1.5rem;
   line-height: 1.2;
   letter-spacing: -0.025em;
 }
 h2 {
-  font-size: 24px;
+  font-size: 1.5rem;
   line-height: 1.3;
   letter-spacing: -0.02em;
 }
 h3 {
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 p {
   max-width: 75ch;
@@ -156,7 +156,7 @@ li {
   gap: 12px;
 }
 .marca {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--secundario);
   border-left: 1px solid var(--wa-color-neutral-border-loud);
   padding-left: 14px;
@@ -169,7 +169,7 @@ li {
   gap: 12px;
 }
 .theme-control {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 400;
   color: var(--secundario);
   width: auto !important;
@@ -203,7 +203,7 @@ li {
 .estado {
   display: block;
   margin: 18px 0 22px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   overflow-wrap: anywhere;
 }
 .acciones {
@@ -218,10 +218,10 @@ li {
   padding: 18px 0;
 }
 .acciones strong {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .acciones p {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
   margin-top: 4px;
 }
@@ -246,10 +246,10 @@ li {
 .vacio p {
   max-width: 43ch;
   margin: auto;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .ayuda {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
   margin-top: 13px;
   max-width: 75ch;
@@ -334,7 +334,9 @@ li {
   .botones button {
     width: 100%;
   }
-  button {
+  button,
+  input:not([type="checkbox"]),
+  select {
     min-height: 44px;
   }
 }
@@ -343,6 +345,10 @@ li {
   ::before,
   ::after {
     transition: none !important;
+  }
+  /* The global rule does not reach into the progress bar's shadow root. */
+  wa-progress-bar::part(indicator) {
+    transition: none;
   }
 }
 
@@ -353,12 +359,12 @@ li {
   padding: 20px;
 }
 #consultation > summary {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 650;
   color: var(--ink);
 }
 #consultation > p {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
 }
 #consultation > .aeat-environment {
@@ -367,7 +373,7 @@ li {
 }
 .aeat-environment,
 .aeat-warning {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .aeat-warning {
   display: block;
@@ -382,7 +388,7 @@ li {
 .aeat-workspace fieldset label {
   display: block;
   margin: 12px 0 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .aeat-workspace fieldset label > input,
 .aeat-workspace fieldset label + input {
@@ -410,7 +416,7 @@ li {
 }
 .model-options legend {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-bottom: 4px;
 }
 .model-options label:has(input:checked) {
@@ -425,7 +431,7 @@ li {
   margin-top: 16px;
   padding-top: 4px;
   border-top: 1px solid var(--linea);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .date-options small {
   display: block;
@@ -440,28 +446,28 @@ li {
 .certificate-help p {
   margin: 12px 0;
   color: var(--secundario);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .batch-preview {
   margin: 16px 0 8px;
   color: var(--secundario);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .certificate-help {
-  font-size: 13px;
+  font-size: 0.8125rem;
   margin-top: 8px;
 }
 .certificate-help button {
-  font-size: 13px;
+  font-size: 0.8125rem;
   width: 100%;
 }
 .aeat-intro {
   color: var(--secundario);
-  font-size: 14px;
+  font-size: 0.875rem;
   margin-top: 8px;
 }
 #scope {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
   margin: 12px 0 20px;
   max-width: none;
@@ -470,7 +476,7 @@ li {
   padding: 16px 0;
 }
 .aeat-workspace .acciones strong {
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 .aeat-workspace .estado {
   margin: 0 0 16px;
@@ -485,7 +491,7 @@ li {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 #query-progress {
   color: var(--ink);
@@ -493,14 +499,14 @@ li {
 }
 #resume {
   margin-left: auto;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 #batch-progress {
   --track-height: 4px;
   margin: 12px 0 4px;
 }
 #batch-details {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 #batch-details > summary {
   color: var(--secundario);
@@ -567,7 +573,7 @@ li {
 .document-filters label {
   display: grid;
   gap: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .document-filters :is(input, select),
 .query-filter select {
@@ -582,14 +588,14 @@ li {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
   min-height: 52px;
 }
 .aeat-workspace .text-action {
   height: auto;
   padding: 8px 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -609,7 +615,7 @@ li {
   background: var(--sidebar);
   border-radius: 5px;
   color: var(--secundario);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .aeat-columns label,
 .aeat-row label,
@@ -633,7 +639,7 @@ li {
   border-bottom: 1px solid var(--linea);
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .aeat-row label {
   display: flex;
@@ -652,17 +658,17 @@ li {
 }
 .aeat-row strong {
   display: block;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 .aeat-row small {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
   margin-top: 4px;
 }
 .aeat-row button {
-  font-size: 13px;
+  font-size: 0.8125rem;
   grid-column: 1 / -1;
   justify-self: start;
   margin-left: 27px;
@@ -679,36 +685,36 @@ li {
 #status-action {
   display: block;
   margin-top: 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .permission-note {
   margin-top: 8px;
   color: var(--secundario);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .danger-zone {
   margin-top: 24px;
   padding-top: 20px;
   border-top: 1px solid var(--linea);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .danger-zone h3 {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 .danger-zone p {
   margin: 6px 0 12px;
   color: var(--secundario);
 }
 .danger-zone button {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 #forget-dialog {
   gap: 12px;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 #forget-dialog h3 {
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 .dialog-actions {
   display: flex;
@@ -719,7 +725,7 @@ li {
   margin-top: 8px;
 }
 .dialog-actions button {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .aeat-state.error,
 .aeat-state.uncertain {
@@ -732,7 +738,7 @@ li {
   justify-content: space-between;
   gap: 12px;
   padding: 16px 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
 }
 .pagination div {
@@ -740,7 +746,7 @@ li {
   gap: 8px;
 }
 .pagination button {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .aeat-tools {
   display: flex;
@@ -749,10 +755,10 @@ li {
   margin: 12px 0;
 }
 .aeat-tools button {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .download-location {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--secundario);
   overflow-wrap: anywhere;
   padding-top: 20px;

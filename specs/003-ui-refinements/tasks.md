@@ -8,9 +8,9 @@
 
 ## Fase 2: historia 4, accesibilidad (P2, primero para comparar capturas)
 
-- [ ] T002 [US4] `font-size` en `rem` en `src/style.css`; capturas idénticas a las de referencia; prueba de letra al 200 %.
-- [ ] T003 [US4] Barra de progreso sin transición con movimiento reducido; prueba.
-- [ ] T004 [US4] Campos y selects de 44 px a ≤ 700 px; prueba a 390 px.
+- [x] T002 [US4] `font-size` en `rem` en `src/style.css`; capturas idénticas a las de referencia; prueba de letra al 200 %.
+- [x] T003 [US4] Barra de progreso sin transición con movimiento reducido; prueba.
+- [x] T004 [US4] Campos y selects de 44 px a ≤ 700 px; prueba a 390 px.
 
 ## Fase 3: historia 1, textos (P1)
 
